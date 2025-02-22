@@ -1,0 +1,94 @@
+version: "3.8"
+services:
+  mongo1:
+    container_name: "mongo1"
+    entrypoint: >
+      /bin/bash -c '
+      if [ ! -f /data/keyfile.key ]; then
+        openssl rand -base64 756 > /data/keyfile.key &&
+        chmod 400 /data/keyfile.key &&
+        chown mongodb:mongodb /data/keyfile.key
+      fi &&
+      /usr/local/bin/docker-entrypoint.sh mongod --replSet dbrs --keyFile /data/keyfile.key --bind_ip_all'
+    image: "mongo:7.0.0"
+    ports:
+      - 127.0.10.1:27017:27017
+    env_file:
+      - path: ./mongo/mongo.env
+        required: true
+    volumes:
+      - "./mongo/data1:/data/db"
+      - "./mongo/mongo1config:/data/configdb"
+      - "./mongo/sharedconfig:/data"
+    healthcheck:
+      test: mongosh
+        -u $${MONGO_INITDB_ROOT_USERNAME}
+        -p $${MONGO_INITDB_ROOT_PASSWORD}
+        --eval "try { rs.status() } catch (err) { rs.initiate({_id:'dbrs',members:[{_id:0,host:'mongo1:27017',priority:1},{_id:1,host:'mongo2:27017',priority:0.5},{_id:2,host:'mongo3:27017',priority:0.5}]}) }" | mongosh --port 27017 --quiet
+      interval: 5s
+      timeout: 30s
+      start_period: 0s
+      start_interval: 1s
+      retries: 30
+    networks:
+      - "mongo-network"
+    restart: unless-stopped
+
+  mongo2:
+    container_name: "mongo2"
+    image: "mongo:7.0.0"
+    ports:
+      - 127.0.10.2:27017:27017
+    volumes:
+      - "./mongo/data2:/data/db"
+      - "./mongo/mongo2config:/data/configdb"
+      - "./mongo/sharedconfig:/data"
+    command:
+      [
+        "--replSet",
+        "dbrs",
+        "--bind_ip_all",
+        "--port",
+        "27017",
+        "--keyFile",
+        "/data/keyfile.key",
+      ]
+    networks:
+      - "mongo-network"
+    restart: unless-stopped
+
+  mongo3:
+    container_name: "mongo3"
+    image: "mongo:7.0.0"
+    ports:
+      - 127.0.10.3:27017:27017
+    volumes:
+      - "./mongo/data3:/data/db"
+      - "./mongo/mongo3config:/data/configdb"
+      - "./mongo/sharedconfig:/data"
+    command:
+      [
+        "--replSet",
+        "dbrs",
+        "--bind_ip_all",
+        "--port",
+        "27017",
+        "--keyFile",
+        "/data/keyfile.key",
+      ]
+    networks:
+      - "mongo-network"
+    restart: unless-stopped
+
+volumes:
+  data1:
+  mongo1config:
+  data2:
+  mongo2config:
+  data3:
+  mongo3config:
+  sharedconfig:
+
+networks:
+  mongo-network:
+    driver: bridge
