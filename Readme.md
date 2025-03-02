@@ -1,18 +1,13 @@
 ###  Verifying the Replica Set
 
-'''
-
 docker exec -it mongo1 mongosh -u <admin user name> -p <admin password>  --eval "rs.status()"
 
-'''
 
 ### connection string:
 
-'''
 
 mongodb://sa:Password123@127.0.10.1:27017,127.0.10.2:27017,127.0.10.3:27017/myDatabase?authSource=admin
 
-'''
 
 	• sa: The username for authentication.
 	• Password123: The password for authentication.
